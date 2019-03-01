@@ -1,0 +1,38 @@
+#! /bin/bash
+
+# Make a graph showing packet hop count vs delivery time
+# The x axis is the time of delivery
+# The y axis is the hop count for the packet delivered at the simulation time
+#   The input file doesn't contain information about failed packets.
+#
+# The input file is the output from the run with VISUAL_ROUTE enabled.
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <fileName>"
+    exit 1;
+fi
+
+# extract source nodes from output file
+VRfile=$1.VR
+
+if [ ! -e $VRfile ]; then
+    grep VR $1 > $VRfile
+fi
+awk -F\; '{ printf( "%s %s\n", $1, $6)}' $VRfile > temp
+awk '{ gsub("{", " ", $0); gsub("}", " ", $0); printf( "%f %s\n", $2, $3)}' temp > hopCount.dat
+rm temp
+
+# create the gnuplot command file
+cat > hopCount.dem <<EOF
+set term jpeg medium size 1280, 960
+set output "${1}-HC.jpg"
+set key off
+set xlabel "Delivery time (sec)"
+set ylabel "Hop Count"
+#set label "xxx" at 250, 24 center
+plot "hopCount.dat" using 1:2 with impulses
+EOF
+
+# create the plot
+gnuplot hopCount.dem
+rm hopCount.dat hopCount.dem

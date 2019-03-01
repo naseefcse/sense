@@ -1,0 +1,293 @@
+#! /usr/bin/perl -w
+#
+#  processCSV
+#
+#  Copyright 2006 Mark Lisee, Boleslaw K. Szymanski and Rensselaer Polytechnic
+#  Institute. All worldwide rights reserved.  A license to use, copy, modify
+#  and distribute this software for non-commercial research purposes only is
+#  hereby granted, provided that this copyright notice and accompanying
+#  disclaimer is not modified or removed from the software.
+#
+#  DISCLAIMER: The software is distributed "AS IS" without any express or
+#  implied warranty, including but not limited to, any implied warranties of
+#  merchantability or fitness for a particular purpose or any warranty of
+#  non-infringement of any current or pending patent rights. The authors of
+#  the software make no representations about the suitability of this software
+#  for any particular purpose. The entire risk as to the quality and
+#  performance of the software is with the user. Should the software prove
+#  defective, the user assumes the cost of all necessary servicing, repair or
+#  correction. In particular, neither Rensselaer Polytechnic Institute, nor
+#  the authors of the software are liable for any indirect, special,
+#  consequential, or incidental damages related to the software, to the maximum
+#  extent the law permits.
+#
+
+#################### app.csv ####################
+
+$appHdrWritten = 0;
+
+sub appClearStats()
+{
+    $appSent = 0;
+    $appReceived = 0;
+    $appDelay = 0;
+    $appCount = 0;
+    return;
+}
+
+sub appUpdateStats(\@)
+{
+    $appSent += shift;
+    $appReceived += shift;
+    $appDelay += shift;
+    $appCount++;
+    return;
+}
+
+sub appWriteStats($)
+{
+    my $str = shift;
+    my $sent = $appSent/$appCount;
+    my $received = $appReceived/$appCount;
+    my $percent;
+    if( $appSent == 0)
+    {
+	$percent = "nan";
+    }
+    else
+    {
+	$percent = $appReceived/$appSent * 100;
+    }
+    my $delay = $appDelay/$appCount;
+    if( $appHdrWritten == 0)
+    {
+	$appHdrWritten = 1;
+	print OUT "name, sent, received, percent, delay\n";
+    }
+    print OUT "$str, $sent, $received, $percent, $delay\n";
+    return;
+}
+
+#################### bat.csv ####################
+
+$batHdrWritten = 0;
+
+sub batClearStats()
+{
+    $batInitial = 0;
+    $batRemaining = 0;
+    $batCount = 0;
+    return;
+}
+
+sub batUpdateStats(\@)
+{
+    $batInitial += shift;
+    $batRemaining += shift;
+    $batCount++;
+    return;
+}
+
+sub batWriteStats($)
+{
+    my $str = shift;
+    my $initial = $batInitial/$batCount;
+    my $remaining = $batRemaining/$batCount;
+    my $percentRem = $batRemaining/$batInitial * 100;
+    my $percentUsed = 100 - $percentRem;
+    if( $batHdrWritten == 0)
+    {
+	$batHdrWritten = 1;
+	print OUT "name, initial, remaining, % rem, % used\n";
+    }
+    print OUT "$str, $initial, $remaining, $percentRem, $percentUsed\n";
+    return;
+}
+
+#################### mac.csv ####################
+
+$macHdrWritten = 0;
+
+sub macClearStats()
+{
+    $macSent = 0;
+    $macReceived = 0;
+    $macCollision = 0;
+    $macCount = 0;
+    return;
+}
+
+sub macUpdateStats(\@)
+{
+    $macSent += shift;
+    $macReceived += shift;
+    $macCollision += shift;
+    $macCount++;
+    return;
+}
+
+sub macWriteStats($)
+{
+    my $str = shift;
+    my $sent = $macSent/$macCount;
+    my $received = $macReceived/$macCount;
+    my $collision = $macCollision/$macCount;
+    my ($recvRatio, $collRatio);
+    if( $macSent == 0)
+    {
+	$recvRatio = "nan";
+	$collRatio = "nan";
+    }
+    else
+    {
+	$recvRatio = $macReceived/$macSent;
+	$collRatio = $macCollision/$macSent;
+    }
+    if( $macHdrWritten == 0)
+    {
+	$macHdrWritten = 1;
+	print OUT "name, sent, received, recv ratio, collision, collision ratio\n";
+    }
+    print OUT "$str, $sent, $received, $recvRatio, $collision, $collRatio\n";
+    return;
+}
+
+#################### net.csv ####################
+
+$netHdrWritten = 0;
+
+sub netClearStats()
+{
+    $netSent = 0;
+    $netReceived = 0;
+    $netSuboptimal = 0;
+    $netCanceled = 0;
+    $netCanceledSuboptimal = 0;
+    $netHopCount = 0;
+    $netCount = 0;
+    return;
+}
+
+sub netUpdateStats(\@)
+{
+    $netSent += shift;
+    $netReceived += shift;
+    $netHopCount += shift;
+    $netSuboptimal += shift;
+    $netCanceled += shift;
+    $netCanceledSuboptimal += shift;
+    $netCount++;
+    return;
+}
+
+sub netWriteStats($)
+{
+    my $str = shift;
+    my $hopCount = $netHopCount / $netCount;
+    my $sent = $netSent / $netCount;
+    my $received = $netReceived / $netCount;
+    my $suboptimal = $netSuboptimal / $netCount;
+    my $canceled = $netCanceled / $netCount;
+    my $canSubopt = $netCanceledSuboptimal / $netCount;
+
+    my ($recvRatio, $subPercent, $canPercent, $canSubPercent);
+    if( $sent == 0)
+    {
+	$recvRatio = "nan";
+	$subPercent = "nan";
+	$canPercent = "nan";
+	$canSubPercent = "nan";
+    }
+    else
+    {
+	$recvRatio = $received / $sent;
+	$subPercent = $suboptimal / $sent * 100;
+	$canPercent = $canceled / $sent * 100;
+	$canSubPercent = $canSubopt / $sent * 100;
+    }
+    my $canSubPercent2;
+    if( $netSuboptimal == 0)
+    {
+	$canSubPercent2 = "nan";
+    }
+    else
+    {
+	$canSubPercent2 = $netCanceledSuboptimal / $netSuboptimal * 100;
+    }
+    if( $netHdrWritten == 0)
+    {
+	$netHdrWritten = 1;
+	print OUT "name, hop count, sent, received, recv ratio, canceled, can %, suboptimal, sub %, can subopt, can subopt %, can subopt %\n";
+    }
+    print OUT "$str, $hopCount, $sent, $received, $recvRatio, $canceled, $canPercent, $suboptimal, $subPercent, $canSubopt, $canSubPercent, $canSubPercent2\n";
+    return;
+}
+
+#################### processing subroutine ####################
+sub processCSV($&&&)
+{
+    $baseName = shift;
+    $clrStatRtn = shift;
+    $updateStatRtn = shift;
+    $writeStatRtn = shift;
+    my $previousSomething = "";
+    my ($something, @fields, @nameParts, $fileName);
+    open( IN, "<$directory/$baseName.csv") or die "can't open $baseName.csv";
+    open( OUT, ">$directory/$baseName-avg.csv") or die "can't open $baseName-avg.csv";
+    <IN>;
+# clear stats
+    &$clrStatRtn;
+# for each line in file
+    while( <IN>)
+    {
+#   read line & split at commas
+	@fields = split( /,/, $_);
+	chomp @fields;
+#   Get file name
+	$fileName = shift @fields;
+#   parse field 1 into <something>-[0-9]+; keep <something>
+	@nameParts = split( /-/, $fileName);
+	pop( @nameParts);
+	$something = join( "-", @nameParts);
+#   if something different than previous <something>
+	if( $something ne $previousSomething)
+	{
+#     write line using previous <something> & info
+#     clear stats
+	    if( $previousSomething ne "")
+	    {
+		&$writeStatRtn( $previousSomething);
+	    }
+	    &$clrStatRtn;
+	    $previousSomething = $something;
+	}
+#   Look for 'nan'
+	my $item;
+	foreach $item (@fields)
+	{
+	    $item =~ s/^\s+//;		# remove leading white space
+	    $item =~ s/\s+$//;		# remove trailing white space
+	    if( $item eq "nan")
+	    {
+		print "nan found in $fileName ($baseName)\n";
+		last;
+	    }
+	}
+#   stats += other info from line
+	&$updateStatRtn( @fields);
+    }
+# write line using previous <something> & info
+    &$writeStatRtn( $something);
+    close IN;
+    close OUT;
+    return;
+}
+
+#################### Main ####################
+
+$directory = shift;
+
+processCSV( "app", \&appClearStats, \&appUpdateStats, \&appWriteStats);
+processCSV( "bat", \&batClearStats, \&batUpdateStats, \&batWriteStats);
+processCSV( "mac", \&macClearStats, \&macUpdateStats, \&macWriteStats);
+processCSV( "net", \&netClearStats, \&netUpdateStats, \&netWriteStats);

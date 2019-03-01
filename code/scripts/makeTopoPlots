@@ -1,0 +1,51 @@
+#! /bin/bash
+
+# Extract information from the run output, .stat and .nodes files
+# It assumes that only one file of the type xxx-<seed> since it uses wildcards.
+# This creates intermediate files with extensions:
+#   .fgrep, .src, .intermediate, .arrow
+#
+# The final output file is <seed>-topo.jpg
+
+if [ $# -ne 2 ]; then
+    echo "usage: $0 <fileName> <analyzerPath>"
+    echo "<analyzerPath> is something like ../../analyzer/bin"
+    exit 1;
+fi
+
+#seedList="4 5 7 98 101 564 840 1532 2100 3692"
+seedList="4"
+
+for seed in $seedList; do
+
+    echo "-------------------- $seed --------------------"
+
+    # extract source nodes from output file
+    grep transmissions *-$seed > temp
+    awk '{ printf( "^%d\\>\n", $2)}' temp > fgrep.in
+    rm temp
+
+    # create gnuplot data files containing either source nodes...
+    grep -f fgrep.in *-$seed.nodes > srcFile
+    # ...or intermediate nodes
+    grep -v -f fgrep.in *-$seed.nodes > nodeFile
+    rm fgrep.in
+
+    # create gnuplot command file that defines an arrow for each link
+    $2/connectivity *-$seed.stat *-$seed.nodes arrowFile
+
+    # create gnuplot command file that draws the topology
+    cat > topo.dem <<EOF
+set term jpeg medium size 1280, 960
+set output "$seed-topo.jpg"
+set key off
+load "arrowFile"
+plot [0:2000] [0:2000] "nodeFile" using 2:3 with points pt 4, "srcFile" using 2:3 with points pt 5
+EOF
+
+    # create the plot
+    gnuplot topo.dem
+
+    # clean up
+    rm arrowFile srcFile nodeFile topo.dem
+done

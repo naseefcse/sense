@@ -1,0 +1,30 @@
+#! /bin/bash
+
+# Extract information from the run output, .stat and .nodes files
+# It assumes that only one file of the type xxx-<seed> since it uses wildcards.
+# This creates intermediate files with extensions:
+#   .fgrep, .src, .intermediate, .arrow
+#
+# The final output file is <seed>.jpg
+
+seedList="4 5 7 98 101 564 840 1532 2100 3692"
+#seedList="4"
+
+for seed in $seedList; do
+
+    echo "-------------------- $seed --------------------"
+
+    # extract source nodes from output file
+    grep transmissions *-$seed > temp
+    awk '{ printf( "^%d\\>\n", $2)}' temp > fgrep.in
+    rm temp
+
+    # create gnuplot data files containing either source nodes...
+    grep -f fgrep.in *-$seed.nodes > srcFile
+    # ...or intermediate nodes
+    grep -v -f fgrep.in *-$seed.nodes > nodeFile
+    rm fgrep.in
+
+    rm -f arrowFile nodeFile
+    mv srcFile $seed.sources
+done

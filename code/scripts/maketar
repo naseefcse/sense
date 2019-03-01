@@ -1,0 +1,57 @@
+#! /bin/bash
+#
+#  maketar
+#
+#  Copyright 2006 Mark Lisee, Boleslaw K. Szymanski and Rensselaer Polytechnic
+#  Institute. All worldwide rights reserved.  A license to use, copy, modify
+#  and distribute this software for non-commercial research purposes only is
+#  hereby granted, provided that this copyright notice and accompanying
+#  disclaimer is not modified or removed from the software.
+#
+#  DISCLAIMER: The software is distributed "AS IS" without any express or
+#  implied warranty, including but not limited to, any implied warranties of
+#  merchantability or fitness for a particular purpose or any warranty of
+#  non-infringement of any current or pending patent rights. The authors of
+#  the software make no representations about the suitability of this software
+#  for any particular purpose. The entire risk as to the quality and
+#  performance of the software is with the user. Should the software prove
+#  defective, the user assumes the cost of all necessary servicing, repair or
+#  correction. In particular, neither Rensselaer Polytechnic Institute, nor
+#  the authors of the software are liable for any indirect, special,
+#  consequential, or incidental damages related to the software, to the maximum
+#  extent the law permits.
+#
+# Usage: maketar <source directory>
+#
+# The name of the created tar file is based on the name of the source directory
+# along with the current time.
+#
+
+dir=$1
+tarFile=$dir-`date +%Y%m%d-%H%M%S`.tar
+
+tar rf $tarFile $dir/versions.txt
+
+find $dir -name "*.cc" -exec tar rf $tarFile {} \;
+find $dir -name "*.h" -exec tar rf $tarFile {} \;
+find $dir -name "*.cpp" -exec tar rf $tarFile {} \;
+find $dir -name "Makefile" -exec tar rf $tarFile {} \;
+find $dir -name "*.mk" -exec tar rf $tarFile {} \;
+find $dir -name "*.y" -exec tar rf $tarFile {} \;
+find $dir -name "*.l" -exec tar rf $tarFile {} \;
+find $dir -name "*.conf" -exec tar rf $tarFile {} \;
+tar rf $tarFile $dir/scripts
+tar rf $tarFile --no-recursion $dir/bin
+
+# The make system requires that these directories exist, but don't archive
+# the contents, which are objects and executables
+dir2List="analyzer libraries/parseConfig libraries/visualizer"
+for dir2 in $dir2List; do
+    if [ -d $dir/$dir2/bin ]; then
+	tar rf $tarFile --no-recursion $dir/$dir2/bin
+    fi
+    tar rf $tarFile --no-recursion $dir/$dir2/lib $dir/$dir2/obj
+done
+
+gzip -9 $tarFile
+

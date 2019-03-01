@@ -1,0 +1,52 @@
+#! /bin/bash
+#
+# Show the distribution of hop counts by (source, destination) pairs.
+# This requires that the simulation be compiled with VISUAL_ROUTE defined.
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <fileName>"
+    exit 1;
+fi
+
+inFile=$1
+temp=temp.$$
+
+grep VR $inFile > $temp.VR
+
+cat > $temp.awk <<EOF
+BEGIN {
+  FS = ";";
+}
+
+{ gsub(" ", "", \$2);
+split( \$2, ids, "->");
+if( ids[1] < ids[2])
+{
+  src = ids[1];
+  dest = ids[2];
+}
+else
+{
+  src = ids[2];
+  dest = ids[1];
+}
+HCArray[ src, dest, \$5]++;
+}
+
+END {
+  j = 1;
+  for( i in HCArray)
+  {
+    ind[j] = i;
+    j++;
+  }
+  n = asort( ind);
+  printf( "%d\n", n);
+  for( i = 1; i <= n; i++)
+    printf("%s %d\n", ind[i], HCArray[i]);
+}
+
+EOF
+awk -F\; -f $temp.awk $temp.VR > $1.HCDist
+
+rm $temp.VR #$temp.awk

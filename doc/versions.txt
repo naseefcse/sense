@@ -1,0 +1,20 @@
+Version of 8/29/2006
+
+- The TTL is no longer changed during the packet's life. In the previous code,
+  the TTL was increased if the new expected HC + 4 > current TTL.
+
+- Changed how SHR uses the MAC layer. IN the old code, SHR immediately sent
+  packets that it was forwarding to the MAC layer where they waited on the
+  defer queue until the back off time expired. During this time, the node
+  couldn't send any other packets. Now, the node puts the packets on a delay
+  list until the back off time expires at which time they are sent to the MAC
+  layer. This required the addition of a new timer and list.
+
+- Changed the name of several items:
+  m_ack_queue -> m_ack_list   (it's not a queue)
+  ack_timer   -> ackTimer
+  mwlPrint    -> shrPrint
+  SendPacket  -> AssignSeqNumber (The method SendPacket is new functionality.)
+
+- The logic was swapped that controlled the number of destination nodes when
+  the adjacency matrix channel was used.

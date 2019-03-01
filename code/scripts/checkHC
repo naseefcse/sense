@@ -1,0 +1,14 @@
+#! /bin/bash
+
+args="-x 2000 -t 0.00002 -a 1.00 -A 100.0 -b shr -C false -w 0.012 -R 2 -n 500 -e 500 -p 0.028 -i 40.0 -S false -u false -s 10 -l 0.100 "
+seedList="4 5 7 98 101 564 840 1532 2100 3692"
+for seed in $seedList; do
+    echo -------------------- $seed --------------------
+    outputFile=4L-$seed
+    echo "../sim_shr_ack $args -r $seed > $outputFile"
+    ../sim_shr_ack $args -r $seed > $outputFile
+    ../compareHC $outputFile
+    ../makeDelayPlot $outputFile
+    ../makeHCPlot $outputFile
+done
+grep "\[" *.HC

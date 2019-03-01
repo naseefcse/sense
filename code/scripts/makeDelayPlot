@@ -1,0 +1,38 @@
+#! /bin/bash
+
+# Make a graph showing which packets have been successfully delivered.
+# The x axis is the time of delivery
+# The y axis is the end-to-end delay for the packet
+#   The input file doesn't contain information about failed packets.
+#
+# The input file is the output from the run with VISUAL_ROUTE enabled.
+
+if [ $# -ne 1 ]; then
+    echo "usage: $0 <fileName>"
+    exit 1;
+fi
+
+# extract source nodes from output file
+VRfile=$1.VR
+
+if [ ! -e $VRfile ]; then
+    grep VR $1 > $VRfile
+fi
+awk -F\; '{ printf( "%s %s\n", $1, $4)}' $VRfile > temp
+awk '{ printf( "%f %f\n", $2, $3)}' temp > delay.dat
+rm temp
+
+# create the gnuplot command file
+cat > delay.dem <<EOF
+set term jpeg medium size 1280, 960
+set output "${1}-delayPlot.jpg"
+set key off
+set xlabel "Delivery time (sec)"
+set ylabel "End-to-end delay (sec)"
+#set label "10 lambda, 10 source pairs, 40 seconds" at 250, 24 center
+plot "delay.dat" using 1:2 with impulses
+EOF
+
+# create the plot
+gnuplot delay.dem
+rm delay.dat delay.dem

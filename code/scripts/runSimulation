@@ -1,0 +1,185 @@
+#! /bin/bash
+
+# Get the output directory
+outputDir=$1
+shift
+
+# run to create output file
+# check to see if output files were created
+if [ $# -lt 1 ]; then
+    option="run"
+else
+    option=$1
+    shift
+    case $option in
+	"run"  | "check" )
+	    ;;
+	* )
+	    echo "Bad option $option";
+	    exit 1;;
+    esac
+fi
+
+visualizeDir=${outputDir}/visualize
+statsDir=${outputDir}/stats
+
+case $option in
+    "run" )
+# Don't overwrite an existing directory
+	if [ -d "$outputDir" ]; then
+	    echo "specify new output directory, $outputDir already exists"
+	    exit 1
+	fi
+	mkdir $outputDir ;;
+    "check" )
+	if [ ! -d "$outputDir" ]; then
+	    echo "directory $outputDir does not exist"
+	    exit 1
+	fi ;;
+esac
+
+# Choose the simulation
+simulator=sim_shr_ack
+#simulator=sim_shr_dist_ack
+#simulator=sim_shr_loc_ack
+
+#configFile=../configFiles/geoff-Failure.conf
+#configFile=../configFiles/geoff-noFailure.conf
+#configFile=../configFiles/9nodes.conf
+
+commonParameters="-x 2000 -t 0.00002 -A 100.0"
+#commonParameters="-z 4001 -x 60 -s 1 -t 0.00002 -c $configFile"
+#commonParameters="-x 8 -s 1 -t 0.00002 -c $configFile"
+
+enableCSV="true"
+
+# Uncomment these lines to enable original or modified backoff or
+# to enable stats dumping or route visualization
+#enableVisualize="true"
+#enableStats="true"
+
+# these variable set the parameters
+#activityLevels="1.00 0.95 0.90 0.85 0.80 0.75 0.70"
+activityLevels="1.00"
+#intervalList="10.0 20.0 30.0 40.0 50.0 60.0 70.0 80.0 90.0 100.0"
+intervalList="10.0"
+#modelList="incorrect ssr shr shr-rr"
+modelList="ssr shr shr-rr"
+#seedList="4 5 7 98 101 564 840 1532 2100 3692"
+seedList="3692"
+#unidirectionList="true false"
+unidirectionList="false"
+#sinkList="false true"
+sinkList="false"
+#sourceList="2 4 6 8 10"
+sourceList="10 20"
+endList="1000"
+lambdaList="0.100"
+
+# Enable one of these if the simulation determines the node location
+# (Not for use with a configuration file)
+# Remember to uncomment the for loop below
+#
+#nodeList="244 293 342 391 440 500"
+nodeList="500"
+enableNodes="true"
+
+# For use with the "real" radio model
+#powerList="0.028 0.024 0.020 0.019 0.018 0.017 0.016 0.015 0.014"
+powerList="0.028"	# approx. TX range of 230 m
+
+if [ x${enableVisualize:+1} != "x" ]; then
+    mkdir -p $visualizeDir
+fi
+if [ x${enableStats:+1} != "x" ]; then
+    mkdir -p $statsDir
+fi
+
+for end in $endList; do
+    for sink in $sinkList; do
+	for direction in $unidirectionList; do
+	    for activity in $activityLevels; do
+		for interval in $intervalList; do
+		    for power in $powerList; do
+			for numSource in $sourceList; do
+			    for lambda in $lambdaList; do
+				for node in $nodeList; do
+				    if [ x${enableNodes:+1} != "x" ]; then
+					bN1="-n${node}"
+				    else
+					bN1=""
+				    fi
+				    baseName=e${end}-p${power}${bN1}-a${activity}-S${sink:0:1}-u${direction:0:1}-i${interval}-s${numSource}-l${lambda}
+				    for seed in $seedList; do
+					if [ x${enableNodes:+1} != "x" ]; then
+					    lA1="-n $node "
+					else
+					    lA1=""
+					fi
+					loopArgs="${lA1}-e $end -p $power -i $interval -S $sink -u $direction -a $activity -s $numSource -l $lambda -r $seed"
+					for model in $modelList; do
+					    case $model in
+						"ssr" )
+						    modelFile="ssr"
+						    modelArgs="-b ssr -C true"
+						    ;;
+						"incorrect" )
+						    modelFile="pub"
+						    modelArgs="-b incorrect -C true"
+						    ;;
+						"shr" )
+						    modelFile="shr"
+						    modelArgs="-b shr -C false -w 0.012 -R 0"
+						    ;;
+						"shr-rr" )
+						    modelFile="shrRR"
+						    modelArgs="-b shr -C false -w 0.012 -R 2"
+#						    modelArgs="-b shr -C false -w 0.012 -R 1"
+						    ;;
+					    esac
+					    fileName=${modelFile}-${baseName}-$seed
+					    outputFile="${outputDir}/${fileName}"
+					    if [ x${enableVisualize:+1} != "x" ]; then
+						visParam="-v $visualizeDir/$fileName"
+					    else
+						visParam=""
+					    fi
+					    if [ x${enableStats:+1} != "x" ]; then
+						statsParam="-d $statsDir/$fileName"
+					    else
+						statsParam=""
+					    fi
+					    case $option in
+						"run" )
+						    echo "---------- $loopArgs ----------"
+						    cmd="../${simulator} $commonParameters $modelArgs $loopArgs $visParam $statsParam"
+						    echo "$cmd > $outputFile"
+						    $cmd > $outputFile ;;
+						"check" )
+						    if [ ! -f $outputFile ]; then
+							echo "$outputFile is missing"
+						    else
+							grep events $outputFile > /dev/null
+							if [ $? -ne 0 ]; then
+							    echo "$outputFile is incomplete"
+							fi
+						    fi
+					    esac
+					done
+				    done
+				done		#nodeList
+			    done
+			done
+		    done
+		done
+	    done
+	done
+    done
+done
+
+if [ $option = "run" -a x${enableCSV:+1} != "x" ]; then
+    echo "makeCSV"
+    ./makeCSV $outputDir
+    echo "averageCSV"
+    ./averageCSV $outputDir
+fi
